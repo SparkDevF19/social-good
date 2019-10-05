@@ -1,3 +1,1 @@
-# social-good
-# social-good
-# tipperCodePath
+# Social Good
