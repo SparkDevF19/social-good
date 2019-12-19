@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Census Outreach Map</title>
+    <meta name="viewport" content="initial-scale=1.0">
+    <meta charset="utf-8">
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+
+      .nicebox {
+    position: absolute;
+    text-align: center;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 13px;
+    z-index: 5;
+    box-shadow: 0 4px 6px -4px #333;
+    padding: 5px 10px;
+    background: rgb(255,255,255);
+    background: linear-gradient(to bottom,rgba(255,255,255,1) 0%,rgba(245,245,245,1) 100%);
+    border: rgb(229, 229, 229) 1px solid;
+  }
+
+  .scrollFix {
+    overflow-y: scroll !important;
+   height: 200px !important;
+}
+
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      button {
+    overflow: visible;
+    width: auto;
+}
+
+button.link {
+    /*font-family: "Verdana" sans-serif;
+    font-size: 1em;*/
+    text-align: left;
+    color: blue;
+    background: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+}
+
+button.link span {
+    text-decoration: underline;
+}
+
+button.link:hover span,
+button.link:focus span {
+    color: black;
+}
+
+#data-box {
+        top: 200px;
+          left: 10px;
+          width: 300px;
+          height: 400px;
+          line-height: 45px;
+          display: none;
+        }
+
+  #data-value { font-size: 1.0em; font-weight: normal }
+  #data-label { font-size: 2.0em; font-weight: bold; padding-right: 10px; }
+
+  #GEOID10 {
+          width: 360px;
+          height: 20px;
+        }      
+
+    </style>
+  </head>
+  <body>
+      
+    <div id="data-box" class="nicebox">
+      <label id="data-label" for="data-value"></label>
+      <span id="data-value"></span>
+    </div>
+    <div id="map"></div>
+    <script src= "https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"> 
+    </script> 
+    <script>
+      let map;
+      let geoJSON;
+      var clickedID = 0;
+      let clickedArea;
+      let openWindow;
+      var LRS_max = 10000;
+      var LRS_cutoff = 3120;
+      var showTracts = true;
+      
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+          center: {lat: 25.599356, lng: -80.537258},
+          zoom: 10,
+          styles: [
+            {elementType: 'geometry', stylers: [{color: '#f2f2f2'}]},
+            {             
+              featureType: 'water',
+              elementType: 'geometry',
+              stylers: [{color: '#bfbfbf'}]
+            }
+          ]
+        });
+        
+        map.data.loadGeoJson(
+          "../MegaDade.json",
+         {
+             idPropertyName: "GEOID10"
+         },
+         features => {}
+        );
+
+        //Set up stye rules and events      
+        map.data.setStyle(style);
+        map.data.addListener('click', onClick);
+        map.data.addListener('mouseover', mouseOver);
+ 
+      } //end of initMap()
+
+
+
+      function onClick(event){
+      //Reset style of all features
+      map.data.setStyle(style);
+
+      //Set initial variables
+      clickedArea = event.feature.getProperty('NAME10');
+      
+      // Request for orgs in clicked area
+      // Add org names to array, insert into infowindowString with for loop
+      
+      //var orgID = // array from query
+      //var lengthorgs = // lengths of query
+
+      var infowindowString = '<div id="content">'+
+      '<div id="siteNotice">'+
+      '</div>'+
+      '<h1 id="firstHeading" class="firstHeading">'+clickedArea+'</h1>'+
+      '<div id="bodyContent" class="scrollFix">'+
+      '<p><b>Organizations working here: </b></p>'+
+      '<p><button onclick="orgButton()" type="button" class="link"><span>Org 1</span></button></p>'+
+      '</div>'+
+      '</div>';
+
+      //for (var i = 0; i < lengthorgs; i++){
+      //infowindowString +=
+      //'<p><button id='+ orgID[i] +'onclick="orgButton()" type="button" class="link"><span>Org 1</span></button></p>'; 
+      //}
+
+      //infowindowString +=   
+      //'</div>'+
+      //'</div>';
+
+        //Define infowindow
+        var infowindow = new google.maps.InfoWindow({
+         content: infowindowString,
+         position: event.latLng,
+        });
+
+      //Close previous info window (openWindow)
+      if (openWindow) {
+        openWindow.close();
+    }
+
+        //Update clicked feature
+        clickedID = event.feature.getProperty('GEOID10');
+        event.feature.setProperty('isClicked', true);
+
+        //Open new info window
+        infowindow.open(map);
+        openWindow = infowindow;
+
+        } //end onClick function
+
+
+      function mouseOver(event) {
+        map.data.revertStyle();
+        map.data.overrideStyle(event.feature, {strokeWeight: 4});
+        
+}
+
+      function orgButton(){
+        //var orgString =  orgID[this.id]; 
+
+        //Create org box
+        document.getElementById('data-label').textContent = 'Org Name';
+        //document.getElementById('data-value').textContent = orgString;
+        document.getElementById('data-box').style.display = 'block';
+        //document.getElementById('data-box').style.content = orgString;
+
+        //By OrgID
+      }
+
+      function style(feature) {
+        let color = '#0A96AF'; //logo blue
+        let opacity = '0';
+        let clickable = false;
+        let visible = true;
+        let stroke = 0;
+        
+        if(feature.getProperty('isTract')){
+          if(showTracts && feature.getProperty('LRS') > LRS_cutoff){
+            color = '#FF5656';
+            opacity = 0.6 + (feature.getProperty('LRS') - LRS_cutoff) / (LRS_max - LRS_cutoff);
+          }
+          else{
+            visible = false;
+          }
+        }
+        else{
+          stroke = 1;
+          clickable = true;
+
+          //Set as unclicked if ID doesn't match clickedID
+          if(feature.getProperty('GEOID10') != clickedID){
+            feature.setProperty('isClicked', false);
+          }
+
+          //All of Miami-Dade
+          if(feature.getProperty('GEOID10') == 100){
+            stroke = 1
+            opacity = '0.3'
+          }
+
+          if (feature.getProperty('isClicked')) {
+            opacity = '0.5';
+            stroke = 4;
+          }
+
+        }
+        
+        return {
+          fillColor: color,
+          strokeWeight: stroke,
+          fillOpacity: opacity,
+          clickable: clickable
+        }
+      }
+    </script>
+    <script src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCDCnmffvjd28dTsYJdfD6qp7FspTcOMWw&callback=initMap"
+    async defer></script>
+  </body>
+</html>
